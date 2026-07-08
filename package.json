@@ -1,0 +1,42 @@
+{
+  "name": "ninety",
+  "version": "1.0.0",
+  "description": "Offline football fan companion — sign reader, translator, P2P tip mesh, and USDt wallet",
+  "main": "index.js",
+  "type": "module",
+  "scripts": {
+    "start": "bare index.js",
+    "start:peer2": "bare index.js <TOPIC_HEX>",
+    "ui": "electron electron/main.cjs --wallet-dir peer1-wallet",
+    "ui:peer1": "electron electron/main.cjs --wallet-dir peer1-wallet --topic 191793e539695e202a4e962efee1e8fd9e09b1acddb851ec247eaf55cbb2e425",
+    "ui:peer2": "electron electron/main.cjs --wallet-dir peer2-wallet --topic 191793e539695e202a4e962efee1e8fd9e09b1acddb851ec247eaf55cbb2e425",
+    "test": "bare test.js && bare test-compute-escrow.js && bare test-match-briefing.js && bare test-onchain-proof.js"
+  },
+  "keywords": [
+    "football",
+    "offline",
+    "p2p",
+    "qvac",
+    "pears",
+    "wdk"
+  ],
+  "license": "MIT",
+  "dependencies": {
+    "@qvac/sdk": "^0.14.1",
+    "@tetherto/wdk": "^1.0.0-beta.13",
+    "@tetherto/wdk-wallet-evm": "^1.0.0-beta.15",
+    "b4a": "^1.6.0",
+    "bare-fs": "^4.7.3",
+    "bare-path": "^3.0.1",
+    "bare-process": "^1.0.0",
+    "bare-readline": "^1.3.1",
+    "bare-url": "^2.4.5",
+    "hypercore-crypto": "^3.0.0",
+    "hyperswarm": "^4.0.0",
+    "jsqr": "^1.4.0",
+    "qrcode": "^1.5.4"
+  },
+  "devDependencies": {
+    "electron": "^33.0.0"
+  }
+}

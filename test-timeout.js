@@ -1,0 +1,1 @@
+process.on('unhandledRejection', (e) => console.log('UNHANDLED:', e.message)); const timeout = new Promise((_, reject) => setTimeout(() => reject(new Error('Transcription timed out, try again')), 100)); Promise.race([Promise.resolve(''), timeout]); setTimeout(() => {}, 200);

@@ -1,0 +1,528 @@
+<link rel="stylesheet" href="styles.css" />
+
+<!-- ── Startup overlay: shown until backend emits `ready` ── -->
+<div id="boot" class="boot">
+  <div class="boot-mark">NINETY<span class="boot-plus">+</span></div>
+  <div class="boot-sub">FOOTBALL FAN COMPANION · OFFLINE</div>
+  <div class="boot-bar"><i id="bootFill"></i></div>
+  <div id="bootStatus" class="boot-status">Warming up…</div>
+</div>
+
+<!-- ── Scoreboard strip (signature element) ── -->
+<header class="board">
+  <div class="board-left">
+    <span class="board-badge" id="roleBadge">PEER</span>
+    <span class="board-mark">NINETY</span>
+  </div>
+  <div class="board-mid">
+    <div class="board-cell">
+      <label>MATCH ID</label>
+      <button id="topicBtn" class="board-val mono clickable" title="Copy match ID">—</button>
+    </div>
+    <div class="board-cell">
+      <label>PEERS</label>
+      <span id="peerCount" class="board-val mono">0</span>
+    </div>
+  </div>
+  <div class="board-right">
+    <span id="liveDot" class="live-dot"></span>
+    <span id="liveText" class="live-text">WAITING</span>
+  </div>
+</header>
+
+<!-- ── Mesh Health Badge — read-only live status strip ── -->
+<div id="meshHealthBadge" class="mesh-health">
+  <div class="mh-item">
+    <svg class="mh-ico" viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+    <span id="mhPeerCount" class="mh-val">0</span>
+    <span class="mh-label">peers</span>
+  </div>
+  <span class="mh-sep">·</span>
+  <div class="mh-item">
+    <span id="mhSyncDot" class="mh-sync-dot"></span>
+    <span id="mhSyncText" class="mh-val">Waiting</span>
+  </div>
+  <span class="mh-sep">·</span>
+  <div class="mh-item">
+    <svg class="mh-ico" viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="5" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/></svg>
+    <span id="mhPendingCount" class="mh-val">0</span>
+    <span class="mh-label">pending</span>
+  </div>
+</div>
+
+<!-- ── Tab rail ── -->
+<nav class="tabs">
+  <button class="tab is-active" data-tab="read">
+    <span class="tab-key">Sign reader</span>
+  </button>
+  <button class="tab" data-tab="feed">
+    <span class="tab-key">Tip feed</span>
+    <span id="feedBadge" class="tab-badge" hidden>0</span>
+  </button>
+  <button class="tab" data-tab="wallet">
+    <span class="tab-key">Wallet</span>
+  </button>
+  <button class="tab" data-tab="reunite">
+    <span class="tab-key">Reunite</span>
+    <span id="reuniteBadge" class="tab-badge" hidden>0</span>
+  </button>
+  <button class="tab" data-tab="phrases">
+    <span class="tab-key">Phrasebook</span>
+  </button>
+  <button class="tab" data-tab="leaderboard">
+    <span class="tab-key">Leaderboard</span>
+  </button>
+  <button class="tab" data-tab="onchain">
+    <span class="tab-key">On-chain Proof</span>
+  </button>
+</nav>
+
+<main class="stage">
+  <!-- ── 1. SIGN READER ── -->
+  <section id="panel-read" class="panel is-active">
+    <div class="panel-head">
+      <h1>Read a sign</h1>
+      <div class="lang-pick">
+        <span class="eyebrow">Translate</span>
+        <select id="langFrom" class="mini-select">
+          <option value="en">EN</option><option value="es">ES</option><option value="fr">FR</option>
+          <option value="de">DE</option><option value="it">IT</option><option value="pt">PT</option>
+          <option value="nl">NL</option><option value="ru">RU</option><option value="ja">JA</option>
+          <option value="ko">KO</option><option value="zh">ZH</option>
+        </select>
+        <span class="lang-arrow">→</span>
+        <select id="langTo" class="mini-select">
+          <option value="es">ES</option><option value="en">EN</option><option value="fr">FR</option>
+          <option value="de">DE</option><option value="it">IT</option><option value="pt">PT</option>
+          <option value="nl">NL</option><option value="ru">RU</option><option value="ja">JA</option>
+          <option value="ko">KO</option><option value="zh">ZH</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="read-grid">
+      <div id="dropZone" class="dropzone">
+        <img id="signPreview" class="sign-preview" hidden alt="" />
+
+        <!-- empty / chooser: two balanced entry points -->
+        <div id="readChooser" class="drop-choose">
+          <div class="drop-empty">
+            <div class="drop-plus">+</div>
+            <div class="drop-line">Choose a sign photo</div>
+            <div class="drop-sub">OCR and translation run on-device — no network</div>
+          </div>
+          <label class="offload-toggle" for="offloadToggle" title="Send this image to a connected peer to run QVAC OCR+translation instead of processing it locally">
+            <input type="checkbox" id="offloadToggle" />
+            <span>Offload to peer</span>
+          </label>
+          <div class="entry-row">
+            <button id="readCamBtn" class="entry-btn">
+              <svg class="entry-ico" viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 8.5A1.5 1.5 0 0 1 4.5 7h2L8 5h8l1.5 2h2A1.5 1.5 0 0 1 21 8.5v9A1.5 1.5 0 0 1 19.5 19h-15A1.5 1.5 0 0 1 3 17.5z"/><circle cx="12" cy="13" r="3.2"/></svg>
+              <span class="entry-label">Use camera</span>
+            </button>
+            <button id="pickBtn" class="entry-btn">
+              <svg class="entry-ico" viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5"/></svg>
+              <span class="entry-label">Choose file</span>
+            </button>
+            <button id="micBtn" class="entry-btn" title="Hold to record a phrase">
+              <svg class="entry-ico" viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="22"/><line x1="8" y1="22" x2="16" y2="22"/></svg>
+              <span class="entry-label">Hold to speak</span>
+            </button>
+          </div>
+          <div id="readCamError" class="cam-error" hidden></div>
+        </div>
+
+        <!-- live camera preview -->
+        <div id="readCam" class="cam-wrap" hidden>
+          <video id="readVideo" class="cam-view" autoplay playsinline muted></video>
+          <div class="cam-controls">
+            <button id="readCancelCam" class="ghost-btn">Cancel</button>
+            <button id="readCapture" class="btn-accent">Capture</button>
+          </div>
+        </div>
+
+        <!-- captured review -->
+        <div id="readReview" class="cam-wrap" hidden>
+          <img id="readCaptured" class="cam-view" alt="" />
+          <div class="cam-controls">
+            <button id="readRetake" class="ghost-btn">Retake</button>
+            <button id="readUse" class="btn-accent">Use this photo</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="read-out">
+        <div class="out-block">
+          <span class="eyebrow">Detected text</span>
+          <p id="ocrText" class="out-text mono">—</p>
+        </div>
+        <div class="out-rule"></div>
+        <div class="out-block">
+          <div class="trans-header">
+            <span class="eyebrow accent-eyebrow">Translation</span>
+            <button id="ttsPlayBtn" class="tts-btn" title="Play translation aloud" hidden>
+              <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14"/></svg>
+            </button>
+          </div>
+          <p id="transText" class="out-text out-translation">—</p>
+        </div>
+        <div id="scoutCard" class="out-block" hidden>
+          <div class="scout-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+            <span class="eyebrow" style="color: var(--accent); font-weight: 600;">Scout says</span>
+            <span id="scoutMeta" class="rt-meta" style="font-size: 11px; opacity: 0.8; color: var(--muted);"></span>
+          </div>
+          <p id="scoutText" class="out-text" style="font-style: italic; color: var(--text); margin-bottom: 4px;">—</p>
+          <div id="scoutProvider" style="font-size: 10px; color: var(--muted); text-align: right; margin-top: 4px;">Reasoned by: Local Device</div>
+        </div>
+        <div id="readTips" class="read-tips" hidden>
+          <span class="eyebrow">Tips from nearby fans</span>
+          <div id="readTipsList"></div>
+        </div>
+
+        <!-- Section Translator Relay: share this translation with the whole section -->
+        <button id="broadcastSignBtn" class="btn-accent relay-send" hidden>Broadcast to section</button>
+      </div>
+    </div>
+
+    <!-- Incoming translations relayed by peers in your section -->
+    <div id="sectionRelay" class="relay-section" hidden>
+      <span class="eyebrow">From your section</span>
+      <div id="sectionBanner" class="relay-banner" hidden></div>
+      <div id="sectionList" class="relay-list"></div>
+    </div>
+  </section>
+
+  <!-- ── 2. TIP FEED ── -->
+  <section id="panel-feed" class="panel">
+    <div class="panel-head">
+      <h1>Tip feed</h1>
+      <span class="eyebrow" id="feedCount">0 tips</span>
+    </div>
+
+    <!-- Feature 9: Scout Match Briefing — one-button spoken summary of everything the app currently knows -->
+    <div class="briefing-controls" style="display: flex; flex-direction: column; gap: 8px; margin-bottom: 12px; padding: 10px; background: var(--bg-2); border: 1px solid var(--line); border-radius: var(--r);">
+      <div style="display: flex; justify-content: space-between; align-items: center;">
+        <div style="display: flex; flex-direction: column;">
+          <span class="eyebrow" style="color: var(--accent);">Match Briefing</span>
+          <span style="font-size: 11px; color: var(--muted);">Scout summarizes tips, alerts, and match status — spoken aloud</span>
+        </div>
+        <button id="generateBriefingBtn" type="button" class="btn-accent btn-small" style="font-size: 11px; height: 26px; padding: 0 10px; display: inline-flex; align-items: center;">Generate Match Briefing</button>
+      </div>
+      <div id="briefingCard" class="out-block" hidden style="background: var(--bg-3); border-radius: 6px; padding: 8px;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+          <span id="briefingMeta" class="rt-meta" style="font-size: 11px; opacity: 0.8; color: var(--muted);"></span>
+          <button id="briefingReadAloudBtn" type="button" class="ghost-btn btn-small" style="font-size: 11px; height: 24px; padding: 0 8px;">Read Aloud</button>
+        </div>
+        <p id="briefingText" class="out-text" style="font-style: italic; color: var(--text);">—</p>
+      </div>
+    </div>
+
+    <!-- Mock Match Demo & Session Controls -->
+    <div class="demo-controls" style="display: flex; gap: 8px; margin-bottom: 12px; padding: 10px; background: var(--bg-2); border: 1px solid var(--line); border-radius: var(--r); align-items: center; justify-content: space-between;">
+      <div style="display: flex; flex-direction: column;">
+        <span class="eyebrow" style="color: var(--accent);">Mock Match Mode</span>
+        <span style="font-size: 11px; color: var(--muted);">Simulate live match gossip offline</span>
+      </div>
+      <div style="display: flex; gap: 8px;">
+        <button id="exportSessionBtn" type="button" class="ghost-btn btn-small" style="font-size: 11px; height: 26px; padding: 0 10px; display: inline-flex; align-items: center; gap: 4px;">
+          <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+          Export Session
+        </button>
+        <button id="startDemoBtn" type="button" class="btn-accent btn-small" style="font-size: 11px; height: 26px; padding: 0 10px; display: inline-flex; align-items: center;">Start Demo</button>
+        <button id="stopDemoBtn" type="button" class="ghost-btn btn-small" hidden style="font-size: 11px; height: 26px; padding: 0 10px; border-color: var(--warn); color: var(--warn); display: none; align-items: center;">Stop</button>
+      </div>
+    </div>
+
+    <!-- Match Pulse Controls -->
+    <div class="pulse-controls" style="display: flex; flex-direction: column; gap: 8px; margin-bottom: 12px; padding: 10px; background: var(--bg-2); border: 1px solid var(--line); border-radius: var(--r);">
+      <div style="display: flex; justify-content: space-between; align-items: center;">
+        <div style="display: flex; flex-direction: column;">
+          <span class="eyebrow" style="color: var(--accent);">Match Pulse Relay</span>
+          <span id="pulseStatus" style="font-size: 11px; color: var(--muted);">Relay live sports API events to offline mesh</span>
+        </div>
+        <div style="display: flex; gap: 6px;">
+          <button id="startPulseBtn" type="button" class="btn-accent btn-small" style="font-size: 11px; height: 26px; padding: 0 10px; display: inline-flex; align-items: center;">Start Relay</button>
+          <button id="stopPulseBtn" type="button" class="ghost-btn btn-small" hidden style="font-size: 11px; height: 26px; padding: 0 10px; border-color: var(--warn); color: var(--warn); display: none; align-items: center;">Stop</button>
+        </div>
+      </div>
+      <div id="pulseSelectRow" style="display: flex; gap: 8px; align-items: center;">
+        <span style="font-size: 11px; color: var(--muted);">Team:</span>
+        <select id="pulseTeamSelect" style="flex-grow: 1; height: 28px; background: var(--bg-3); border: 1px solid var(--line); border-radius: 4px; color: var(--text); font-size: 12px; padding: 0 4px;">
+          <option value="133602">Arsenal FC (EPL)</option>
+          <option value="133610">Chelsea FC (EPL)</option>
+          <option value="133612">Manchester United (EPL)</option>
+          <option value="134108">Real Madrid (La Liga)</option>
+          <option value="134109">FC Barcelona (La Liga)</option>
+        </select>
+      </div>
+    </div>
+
+    <form id="tipForm" class="tip-form">
+      <div class="tip-form-row">
+        <input id="tipLabel" class="field" placeholder="Sign / label (e.g. FoodStall)" autocomplete="off" />
+        <input id="tipLoc" class="field" placeholder="Location (e.g. Gate 3)" autocomplete="off" />
+      </div>
+      <div class="tip-form-row">
+        <input id="tipMsg" class="field field-grow" placeholder="Your tip…" autocomplete="off" />
+        <button type="submit" class="btn-accent">Drop tip</button>
+      </div>
+    </form>
+
+    <div id="tipFilters" class="tip-filters" style="display: flex; gap: 6px; overflow-x: auto; padding: 10px 0; margin-bottom: 10px; scrollbar-width: none;">
+      <button class="filter-chip active" data-filter="" style="background: var(--bg-3); border: 1px solid var(--accent); color: var(--accent); padding: 4px 12px; border-radius: 20px; font-size: 11px; cursor: pointer; white-space: nowrap; font-weight: 600; outline: none; transition: all 0.15s ease;">All</button>
+      <button class="filter-chip" data-filter="food" style="background: var(--bg-2); border: 1px solid var(--line); color: var(--muted); padding: 4px 12px; border-radius: 20px; font-size: 11px; cursor: pointer; white-space: nowrap; outline: none; transition: all 0.15s ease;">Food</button>
+      <button class="filter-chip" data-filter="gate" style="background: var(--bg-2); border: 1px solid var(--line); color: var(--muted); padding: 4px 12px; border-radius: 20px; font-size: 11px; cursor: pointer; white-space: nowrap; outline: none; transition: all 0.15s ease;">Gate</button>
+      <button class="filter-chip" data-filter="safety" style="background: var(--bg-2); border: 1px solid var(--line); color: var(--muted); padding: 4px 12px; border-radius: 20px; font-size: 11px; cursor: pointer; white-space: nowrap; outline: none; transition: all 0.15s ease;">Safety</button>
+      <button class="filter-chip" data-filter="transport" style="background: var(--bg-2); border: 1px solid var(--line); color: var(--muted); padding: 4px 12px; border-radius: 20px; font-size: 11px; cursor: pointer; white-space: nowrap; outline: none; transition: all 0.15s ease;">Transport</button>
+      <button class="filter-chip" data-filter="medical" style="background: var(--bg-2); border: 1px solid var(--line); color: var(--muted); padding: 4px 12px; border-radius: 20px; font-size: 11px; cursor: pointer; white-space: nowrap; outline: none; transition: all 0.15s ease;">Medical</button>
+      <button class="filter-chip" data-filter="other" style="background: var(--bg-2); border: 1px solid var(--line); color: var(--muted); padding: 4px 12px; border-radius: 20px; font-size: 11px; cursor: pointer; white-space: nowrap; outline: none; transition: all 0.15s ease;">Other</button>
+    </div>
+
+    <div id="feedList" class="feed-list">
+      <div id="feedEmpty" class="feed-empty">No tips yet. Drop the first one — it gossips to every connected peer.</div>
+    </div>
+  </section>
+
+  <!-- ── 3. WALLET ── -->
+  <section id="panel-wallet" class="panel">
+    <div class="panel-head">
+      <h1>Wallet</h1>
+      <button id="refreshBtn" class="ghost-btn">Refresh</button>
+    </div>
+
+    <div class="wallet-score">
+      <div class="score-main">
+        <span class="eyebrow">USD₮ balance · Sepolia</span>
+        <div class="score-usdt"><span id="usdtVal" class="mono">0.00</span><span class="score-unit">USD₮</span></div>
+      </div>
+      <div class="score-side">
+        <span class="eyebrow">ETH · gas</span>
+        <div class="score-eth mono" id="ethVal">0.0000</div>
+      </div>
+    </div>
+
+    <div class="wallet-addr">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
+        <span class="eyebrow">Your address</span>
+        <button id="showQrBtn" class="ghost-btn btn-small" style="font-size: 11px; padding: 2px 8px; height: 22px;">Show my QR</button>
+      </div>
+      <button id="addrBtn" class="addr-val mono clickable" title="Copy address">—</button>
+
+      <!-- Expandable QR Code display -->
+      <div id="qrShareWrap" class="qr-share-wrap" hidden style="margin-top: 12px; padding: 16px; background: var(--bg-3); border: 1px solid var(--line); border-radius: var(--r); display: flex; flex-direction: column; align-items: center; gap: 10px;">
+        <div style="background: white; padding: 8px; border-radius: 6px; display: inline-flex;">
+          <img id="qrImage" style="width: 160px; height: 160px; display: block;" alt="Wallet QR Code" />
+        </div>
+        <span class="qr-sub" style="font-size: 11px; color: var(--muted); text-align: center;">Scan to pay this wallet</span>
+      </div>
+    </div>
+
+    <div class="pay-box">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+        <span class="eyebrow">Pay recipient</span>
+        <button id="scanPayBtn" class="ghost-btn btn-small" style="font-size: 11px; padding: 2px 8px; height: 22px; display: inline-flex; align-items: center; gap: 4px;">
+          <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
+          Scan QR
+        </button>
+      </div>
+
+      <!-- Camera Scanner for QR (hidden by default) -->
+      <div id="walletCam" class="cam-wrap" hidden style="margin-bottom: 12px; border: 1px solid var(--line); border-radius: var(--r); overflow: hidden;">
+        <video id="walletVideo" class="cam-view" autoplay playsinline muted style="width: 100%; max-height: 200px; object-fit: cover; background: #000;"></video>
+        <div class="cam-controls" style="padding: 8px; display: flex; justify-content: space-between; align-items: center; background: var(--bg-2);">
+          <button id="walletCancelCam" class="ghost-btn btn-small">Cancel</button>
+          <span class="cam-scan-status" style="font-size: 12px; color: var(--accent);">Scanning for QR…</span>
+        </div>
+      </div>
+      <div id="walletCamError" class="cam-error" hidden style="margin-bottom: 10px;"></div>
+
+      <div class="pay-address-wrap" style="margin-bottom: 12px;">
+        <input id="payAddress" class="field mono" placeholder="Recipient address (0x...) or auto-filled peer" autocomplete="off" style="width: 100%; font-size: 12px; height: 34px; background: var(--bg-3); border: 1px solid var(--line); border-radius: 6px; padding: 0 10px; color: var(--text);" />
+      </div>
+
+      <div class="pay-row">
+        <div class="pay-input">
+          <span class="pay-prefix mono">USD₮</span>
+          <input id="payAmount" class="pay-field mono" inputmode="decimal" placeholder="0.00" />
+        </div>
+        <button id="payBtn" class="btn-accent btn-pay">Pay</button>
+      </div>
+      <div id="payTo" class="pay-to">No peer connected yet</div>
+      <label class="offline-toggle">
+        <input id="offlineToggle" type="checkbox" />
+        <span class="offline-label">Offline mode — sign now, send when connected</span>
+      </label>
+    </div>
+
+    <!-- Pending payments: signed on-device, waiting for a connection to broadcast -->
+    <div id="pendingBox" class="pending-box" hidden>
+      <span class="eyebrow">Pending</span>
+      <div id="pendingList" class="pending-list"></div>
+    </div>
+  </section>
+
+  <!-- ── 4. REUNITE ── -->
+  <section id="panel-reunite" class="panel">
+    <div class="panel-head">
+      <h1>Reunite</h1>
+      <span class="eyebrow">Missing-person mesh alerts</span>
+    </div>
+
+    <!-- Report a missing person -->
+    <div class="reunite-report">
+      <span class="eyebrow accent-eyebrow">Report a missing person</span>
+      <div class="reunite-grid">
+        <div id="reuniteDrop" class="dropzone reunite-drop">
+          <img id="reunitePreview" class="sign-preview" hidden alt="" />
+
+          <!-- empty / chooser: two balanced entry points -->
+          <div id="reuniteChooser" class="drop-choose">
+            <div class="drop-empty">
+              <div class="drop-plus">+</div>
+              <div class="drop-line">Add a photo</div>
+              <div class="drop-sub">OCR reads any text (wristband, shirt number)</div>
+            </div>
+            <div class="entry-row">
+              <button id="reuniteCamBtn" class="entry-btn">
+                <svg class="entry-ico" viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 8.5A1.5 1.5 0 0 1 4.5 7h2L8 5h8l1.5 2h2A1.5 1.5 0 0 1 21 8.5v9A1.5 1.5 0 0 1 19.5 19h-15A1.5 1.5 0 0 1 3 17.5z"/><circle cx="12" cy="13" r="3.2"/></svg>
+                <span class="entry-label">Use camera</span>
+              </button>
+              <button id="reunitePickBtn" class="entry-btn">
+                <svg class="entry-ico" viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5"/></svg>
+                <span class="entry-label">Choose file</span>
+              </button>
+            </div>
+            <div id="reuniteCamError" class="cam-error" hidden></div>
+          </div>
+
+          <!-- live camera preview -->
+          <div id="reuniteCam" class="cam-wrap" hidden>
+            <video id="reuniteVideo" class="cam-view" autoplay playsinline muted></video>
+            <div class="cam-controls">
+              <button id="reuniteCancelCam" class="ghost-btn">Cancel</button>
+              <button id="reuniteCapture" class="btn-accent">Capture</button>
+            </div>
+          </div>
+
+          <!-- captured review -->
+          <div id="reuniteReview" class="cam-wrap" hidden>
+            <img id="reuniteCaptured" class="cam-view" alt="" />
+            <div class="cam-controls">
+              <button id="reuniteRetake" class="ghost-btn">Retake</button>
+              <button id="reuniteUse" class="btn-accent">Use this photo</button>
+            </div>
+          </div>
+        </div>
+        <div class="reunite-fields">
+          <input id="reuniteName" class="field" placeholder="Name (e.g. Leo)" autocomplete="off" />
+          <input id="reuniteDetail" class="field" placeholder="Detail (e.g. red jersey, number 10)" autocomplete="off" />
+          <div class="pay-input reunite-bounty">
+            <span class="pay-prefix mono">USD₮</span>
+            <input id="reuniteBounty" class="pay-field mono" inputmode="decimal" placeholder="0.00" />
+            <span class="reunite-bounty-label">bounty</span>
+          </div>
+          <button id="reuniteBroadcast" class="btn-accent">Broadcast alert</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- My active alerts (reporter side) -->
+    <div id="myAlertsWrap" class="reunite-section" hidden>
+      <span class="eyebrow">Your alerts</span>
+      <div id="myAlerts" class="reunite-list"></div>
+    </div>
+
+    <!-- Incoming alerts from peers -->
+    <div class="reunite-section">
+      <span class="eyebrow">Alerts near you</span>
+      <div id="incomingAlerts" class="reunite-list">
+        <div id="reuniteEmpty" class="feed-empty">No alerts yet. A missing-person report from any connected peer appears here instantly.</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── 5. PHRASEBOOK ── -->
+  <section id="panel-phrases" class="panel">
+    <div class="panel-head">
+      <h1>Phrasebook</h1>
+      <span class="eyebrow">Instant fan translations (offline)</span>
+    </div>
+
+    <!-- Live selected target language indicator -->
+    <div class="phrasebook-lang" style="margin-bottom: 12px; font-size: 13px; color: var(--muted); display: flex; align-items: center; gap: 6px;">
+      Target Language: <span id="pbTargetLang" class="mono" style="color: var(--accent); font-weight: bold; text-transform: uppercase;">ES</span>
+    </div>
+
+    <div id="phrasebookList" class="phrasebook-list" style="display: flex; flex-direction: column; gap: 10px; overflow-y: auto; flex-grow: 1; padding-bottom: 20px;">
+      <!-- Phrases will be rendered dynamically here -->
+    </div>
+
+    <!-- Stadium Mode Modal Overlay / Large display for showing to local person -->
+    <div id="stadiumOverlay" class="stadium-overlay" hidden style="position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(10,13,15,0.98); z-index: 1000; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: var(--pad); box-sizing: border-box;">
+      <span id="closeStadiumBtn" style="position: absolute; top: 20px; right: 25px; font-size: 32px; color: var(--muted); cursor: pointer; user-select: none;">&times;</span>
+      <div style="text-align: center; max-width: 90%; display: flex; flex-direction: column; gap: 20px;">
+        <span class="eyebrow" style="color: var(--accent); font-size: 14px; letter-spacing: 0.2em;">Translation</span>
+        <div id="stadiumText" style="font-size: 38px; font-weight: 800; line-height: 1.2; word-break: break-word; color: var(--text);">—</div>
+        <div id="stadiumOrig" style="font-size: 18px; color: var(--muted); line-height: 1.4; word-break: break-word;">—</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── 6. LEADERBOARD ── -->
+  <section id="panel-leaderboard" class="panel">
+    <div class="panel-head">
+      <h1>Leaderboard</h1>
+      <span class="eyebrow">Top Mesh Contributors</span>
+    </div>
+
+    <div id="leaderboardList" class="leaderboard-list" style="display: flex; flex-direction: column; gap: 10px; overflow-y: auto; flex-grow: 1; padding-bottom: 20px;">
+      <div id="leaderboardEmpty" class="feed-empty">No contributions recorded yet. Drop tips or send payments to top the board!</div>
+    </div>
+  </section>
+
+  <!-- ── 7. ON-CHAIN PROOF (Feature 10) ── -->
+  <section id="panel-onchain" class="panel">
+    <div class="panel-head">
+      <h1>On-chain Proof</h1>
+      <span class="eyebrow" id="onchainNetwork">—</span>
+    </div>
+
+    <div class="out-block" style="margin-bottom: 12px;">
+      <span class="eyebrow">Wallet Address</span>
+      <p class="out-text mono"><a id="onchainWalletAddr" href="#" target="_blank" rel="noopener" class="mono">—</a></p>
+    </div>
+
+    <div style="display: flex; gap: 12px; margin-bottom: 12px; flex-wrap: wrap;">
+      <div class="out-block" style="flex: 1; min-width: 220px;">
+        <span class="eyebrow accent-eyebrow">Reunite Escrow Contract</span>
+        <p class="out-text mono"><a id="onchainReuniteAddr" href="#" target="_blank" rel="noopener" class="mono">—</a></p>
+      </div>
+      <div class="out-block" style="flex: 1; min-width: 220px;">
+        <span class="eyebrow accent-eyebrow">Compute Escrow Contract</span>
+        <p class="out-text mono"><a id="onchainComputeAddr" href="#" target="_blank" rel="noopener" class="mono">—</a></p>
+      </div>
+    </div>
+
+    <div class="out-block" style="margin-bottom: 12px;">
+      <span class="eyebrow">Foundry Test Suite</span>
+      <div id="onchainFoundry" style="font-size: 12px; color: var(--muted); margin-top: 4px; display: flex; gap: 14px; flex-wrap: wrap;">
+        <span>Tests: <strong id="onchainTestsPassing" style="color: var(--text);">—</strong></span>
+        <span>Gas Optimized: <strong id="onchainGasOptimized" style="color: var(--text);">—</strong></span>
+        <span>Deployment Size: <strong id="onchainDeploySize" style="color: var(--text);">—</strong></span>
+        <span>Deployment Gas: <strong id="onchainDeployGas" style="color: var(--text);">—</strong></span>
+      </div>
+    </div>
+
+    <div class="panel-head" style="margin-top: 4px;">
+      <span class="eyebrow">Latest Escrow Transactions</span>
+    </div>
+    <div id="onchainTxList" class="leaderboard-list" style="display: flex; flex-direction: column; gap: 8px; overflow-y: auto; flex-grow: 1; padding-bottom: 20px;">
+      <div id="onchainTxEmpty" class="feed-empty">No on-chain activity yet — post a Reunite bounty or run a compute job to see it here.</div>
+    </div>
+  </section>
+</main>
+
+<!-- ── Toast rail ── -->
+<div id="toasts" class="toasts"></div>
+
+<script src="renderer.js"></script>

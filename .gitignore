@@ -1,0 +1,5 @@
+node_modules/
+peer1-wallet/
+peer2-wallet/
+.ninety/
+*.log

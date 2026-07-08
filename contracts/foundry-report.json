@@ -1,0 +1,13 @@
+{
+  "testsPassing": "23/23",
+  "gasOptimized": true,
+  "deploymentSizeBytes": 5528,
+  "deploymentGas": 1128415,
+  "contract": "ReuniteEscrow",
+  "generatedFrom": {
+    "deploymentSizeBytes": "contracts/out/ReuniteEscrow.sol/ReuniteEscrow.json (deployedBytecode length)",
+    "deploymentGas": "contracts/broadcast/Deploy.s.sol/11155111/run-latest.json (receipt.gasUsed, 0x13cc5c)",
+    "testsPassing": "contracts/test/ReuniteEscrow.t.sol (23 test functions, per Feature 2's completed test suite)"
+  },
+  "note": "Static snapshot for the On-chain Proof Panel (Feature 10). Regenerate by running `forge test` and `forge build` in contracts/ and updating this file by hand — the app never executes forge itself."
+}
