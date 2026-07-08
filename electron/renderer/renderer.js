@@ -1092,6 +1092,7 @@ api.onEvent((evt) => {
       const btn = $('broadcastSignBtn')
       btn.textContent = 'Broadcast ✓'
       setTimeout(() => { btn.textContent = 'Broadcast to section' }, 1600)
+      receiveSectionSign({ ...evt.sign, from: evt.sign.from || evt.from })
       toast('ok', 'Broadcast to section', evt.sign.translation || evt.sign.original)
       break
     }
