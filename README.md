@@ -1,462 +1,333 @@
-# Ninety — Offline Football Fan Companion
+<![CDATA[<div align="center">
 
-[![Platform](https://img.shields.io/badge/platform-Bare-brightgreen.svg)](https://bare.pears.com)
-[![Runtime](https://img.shields.io/badge/runtime-Electron-blue.svg)](https://www.electronjs.org/)
-[![Smart Contracts](https://img.shields.io/badge/contracts-Solidity-orange.svg)](https://soliditylang.org/)
-[![Wallet](https://img.shields.io/badge/wallet-Tether_WDK-red.svg)](https://github.com/tether/wdk)
-[![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
+# Ninety
 
-*Offline sign reader, translator, P2P fan tip mesh, and self-custodial USD₮ wallet for away football fans.*
+**When the final whistle blows and 80,000 phones kill the network,<br>Ninety is the only app still working.**
 
----
+A peer-to-peer matchday companion that runs without internet.<br>
+Translate signs. Share warnings. Find missing people. Send payments.<br>
+No servers. No cloud. No signal required.
 
-## Technology Stack
+**Built with [Pears](https://docs.pears.com) · [QVAC](https://docs.pears.com) · [Tether WDK](https://github.com/tether/wdk)**
 
-| Component | Technology | Description |
-|---|---|---|
-| **P2P Mesh** | Pears / Hyperswarm | Local DHT-based peer discovery and connection mesh |
-| **On-device AI** | QVAC SDK | Local runtime for OCR, translation, whisper, and Qwen completion |
-| **Local LLM** | Qwen 3 600M | Chat completion for Scout AI advice and Match Briefing summaries |
-| **EVM Wallet** | Tether WDK | BIP-39 seed generation, offline signing, Sepolia USD₮/ETH transfer |
-| **Smart Contracts** | Solidity (v0.8.20) | Security-audited escrow contract (`ReuniteEscrow.sol`) |
-| **Tooling** | Foundry | Unit testing, gas profiling, and contract verification |
-| **Runtime** | Bare + Electron | Cross-platform desktop interface sitting on native Bare modules |
+[![23/23 Tests](https://img.shields.io/badge/contract_tests-23%2F23-brightgreen)](#verified-not-just-tested)
+[![4 AI Models](https://img.shields.io/badge/on--device_AI-4_models-blue)](#minute-2--your-phone-becomes-a-stadium-brain)
+[![10 Languages](https://img.shields.io/badge/translation-10_languages-orange)](#minute-1--a-sign-you-cant-read)
+[![MIT](https://img.shields.io/badge/license-MIT-green)](LICENSE)
+
+</div>
 
 ---
 
-## Problem
+## The Problem in One Sentence
 
-Away football fans visiting foreign cities and crowded stadiums face unique, stressful challenges:
-1. **Network Congestion**: Stadiums with 50,000+ fans saturate cellular towers. Cloud-based translation and wallet apps fail completely due to zero connectivity.
-2. **Language Barriers**: Road signs, transport notices, and menus are in the local language, causing confusion.
-3. **Safety and Coordination**: Finding lost friends or missing children in high-density crowds is nearly impossible without working internet.
-4. **Offline Micro-payments**: Small transactions like taxi splits, food purchase, or community tips require digital payments that do not depend on cloud gateways.
+Every major stadium event creates the same failure: tens of thousands of phones saturate the cellular network, and every app that depends on the cloud — maps, translators, payment apps, messaging — stops working at the exact moment fans need them most.
+
+Ninety was built for that moment.
 
 ---
 
-## Solution
+## Follow One Fan Through a Stadium Blackout
 
-**Ninety** is an offline-first companion application. It orchestrates local on-device AI pipelines, peer-to-peer mesh gossip, and a self-custodial EVM wallet to deliver translation, stadium crowd tips, missing person alerts, and micro-payments without relying on central servers or cellular internet connections. 
+Everything Ninety does is visible in a single journey. Each section below follows one fan — from entering a foreign stadium to finding a lost friend — and every feature appears only when the story needs it.
 
 ---
 
-## Why Ninety is Different
+### Minute 1 · A Sign You Can't Read
 
-Ninety's architecture stands on three pillars that form an interdependent system:
+You walk into a stadium in a country where you don't speak the language. There's a warning sign above the gate. Your translation app spins — no connection.
+
+You open Ninety. Point your camera at the sign. The text appears in your language instantly.
+
+**How this works without internet:**
+
+Ninety loads four AI models directly into the application process at startup — no API calls, no cloud, no network round-trips. The sign flows through two of them back-to-back:
+
+| Model | Runtime | Size | Job |
+|-------|---------|------|-----|
+| GGML OCR Latin | C++ in-process | ~20 MB | Extract text from the camera image |
+| Bergamot NMT | Marian C++ in-process | ~30 MB | Translate the extracted text |
+
+Both run inside [QVAC SDK](https://docs.pears.com) — a toolkit that packages quantized C++ neural network runtimes as native plugins for the [Bare](https://docs.pears.com) JavaScript runtime. The models download once on first launch, then run entirely from cache.
+
+**Translation supports 10 languages** (20 directional pairs): English, Spanish, French, German, Italian, Portuguese, Dutch, Russian, Japanese, Korean, and Chinese. Language pairs hot-swap at runtime — the old model unloads and the new one loads without restarting the app.
+
+> **Why QVAC instead of a cloud API?**  
+> Cloud translation APIs need a network connection — the exact thing that fails in a crowded stadium. PyTorch and HuggingFace runtimes are too heavy to embed in a desktop app. QVAC solves both: production-grade inference at native speed, zero network dependency, packaged as a plugin that loads inside the Bare runtime process.
+
+---
+
+### Minute 3 · Warning the Section
+
+That sign said "Gate 7 closed — use Gate 12." Other fans are walking toward Gate 7. You tap **Broadcast**. Every nearby phone running Ninety receives the warning.
+
+**How devices find each other without a server:**
+
+Ninety uses [Pears and Hyperswarm](https://docs.pears.com) to form an ad-hoc mesh network. When you start a match session, Ninety joins a shared 32-byte topic on the Hyperswarm DHT. Every device that joins the same topic discovers every other device directly — no signaling server, no WebSocket relay, no central coordinator.
 
 ```
-┌─────────────────────────────────────────────────────────────┐
-│                       NINETY CORE                           │
-├───────────────────┬───────────────────┬─────────────────────┤
-│   On-device AI    │     P2P Mesh      │  Custodial Wallet   │
-│    (QVAC SDK)     │   (Hyperswarm)    │     (Tether WDK)    │
-└─────────┬─────────┴─────────┬─────────┴──────────┬──────────┘
-          │                   │                    │
-          ▼                   ▼                    ▼
-   Offline OCR, NMT,   Gossip tips, signs  Escrow payments for
-   and Scout summaries  and reunite alerts  compute & finders
+┌──────────┐         Hyperswarm DHT          ┌──────────┐
+│  Your    │◄──── Topic: 191793e5... ────►│  Fan     │
+│  Phone   │     (32-byte match key)        │  Nearby  │
+└────┬─────┘                                 └────┬─────┘
+     │            TCP + NDJSON framing            │
+     └──────────────────┬─────────────────────────┘
+                        │
+                   ┌────┴─────┐
+                   │  More    │
+                   │  Peers   │
+                   └──────────┘
 ```
 
-Removing any single pillar breaks the product's core utility:
-* **No AI**: The app cannot translate local signs, transcribe voice, or summarize stadium conditions.
-* **No P2P Mesh**: The app becomes isolated, preventing fans from sharing safety alerts, community tips, or matching addresses for local payments.
-* **No Wallet**: Fans cannot pay for services, split costs, or lock bounties and compute fees in escrow contracts.
+Messages are serialized as JSON and delimited with newlines (NDJSON). Every connected peer receives every broadcast — flood gossip with no routing table.
+
+> **The hardest networking bug wasn't peer discovery.**
+>
+> TCP does not preserve message boundaries. Two JSON payloads sent in quick succession can merge inside the socket buffer, or one payload can fragment across two `data` events. Parsing a merged buffer throws a `SyntaxError` and crashes the process.
+>
+> We solved this with [NDJSON framing](lib/mesh.js#L54-L80). Every outgoing message is appended with `\n`. The receiver accumulates a string buffer and splits at newline boundaries, processing each line independently. Malformed frames are silently discarded without dropping the TCP connection — critical in a stadium environment where packet loss and reordering are constant.
 
 ---
 
-## Architecture Diagram
+### Minute 5 · Your Battery Is Dying
 
-The diagram below details the data flow and orchestration across components:
+Your phone is at 5%. Running the local LLM will kill it. But you need a recommendation: which exit should you use based on the tips other fans have shared?
 
-```
-                       [ User Input / Camera Capture ]
-                                      │
-                                      ▼
-                             [ QVAC AI Pipeline ]
-                  ┌───────────────────┼───────────────────┐
-                  ▼                   ▼                   ▼
-            [ GGML OCR ]        [ Bergamot NMT ]   [ Whisper Speech ]
-                  │                   │                   │
-                  └───────────────────┼───────────────────┘
-                                      ▼
-                            [ Scout / Briefing ]
-                              (Qwen 3 600M LLM)
-                                      │
-                                      ▼
-                            [ Hyperswarm Mesh ]
-                  ┌───────────────────┼───────────────────┐
-                  ▼                   ▼                   ▼
-             [ Tip Feed ]     [ Section Relay ]    [ Reunite Alerts ]
-                  │                   │                   │
-                  └───────────────────┼───────────────────┘
-                                      ▼
-                            [ WDK EVM Engine ]
-                                      │
-                       ┌──────────────┴──────────────┐
-                       ▼                             ▼
-               [ Direct Transfer ]          [ ReuniteEscrow ]
-                (Offline Pending)            (Bounty/Compute)
-                                                     │
-                                                     ▼
-                                            [ On-chain Proof ]
-```
+You tap **Offload**. Ninety finds a peer whose device has battery and compute to spare. It sends your query over the mesh, the peer runs the LLM locally, and the result comes back in under 5 seconds.
+
+**But how do you pay a stranger for compute?**
+
+Before the query leaves your device, Ninety locks **0.01 USD₮** in an on-chain escrow contract. If the peer returns a valid result, the funds release to them. If they time out, disconnect, or return garbage — your device automatically reclaims the deposit.
+
+This is the same `ReuniteEscrow` contract (below), reused with a `compute:` prefix namespace to isolate compute job IDs from safety bounties. No new contract deployment. Same state machine: **lock → verify → release/refund**.
+
+> **Why not just trust the peer?**
+>
+> In a trustless ad-hoc network, you can't. Escrow-backed compute creates an honest incentive: peers earn real USD₮ for helping, and requesters never lose funds to non-delivery. The compute escrow uses a **5-minute** refund timeout (vs. 24 hours for safety bounties) because compute jobs resolve in seconds, not hours.
 
 ---
 
-## Complete Feature Documentation
+### Minute 8 · A Child Goes Missing
 
-### 1. Offline OCR
-* **Purpose**: Allows users to scan signs, posters, and tickets in foreign stadiums.
-* **User Workflow**: The user takes a photo or uploads an image of a sign. The extracted text is instantly displayed.
-* **Technology**: GGML OCR engine loaded via `@qvac/sdk`. Runs fully on-device.
-* **Implementation Details**: Uses `OCR_LATIN` model configuration. Automatically handles rotational retries and mag-ratios for low-contrast images.
+A parent nearby activates **Reunite**. They post a photo of their missing child with a **10 USD₮** search bounty. Every device in the section receives the alert.
 
-### 2. Offline Translation
-* **Purpose**: Converts foreign sign text into the user's native language.
-* **User Workflow**: Extracted OCR text is piped to the Bergamot translator. The translated text appears below the original.
-* **Technology**: NMT Bergamot plugin loaded via `@qvac/sdk`.
-* **Implementation Details**: Manages translation pairs (e.g. `es->en`, `en->es`) using on-device models that are loaded and cached dynamically.
+**Transmitting a photo over a lossy mesh is harder than it sounds.**
 
-### 3. Camera Capture
-* **Purpose**: Captures signs, QR codes, and missing person photos directly within the app.
-* **User Workflow**: Clicking "Use camera" starts a live preview. Clicking "Capture" takes a snapshot and pipes it downstream.
-* **Technology**: WebRTC `getUserMedia` and HTML5 video/canvas in Electron.
-* **Implementation Details**: The captured frame is converted to base64, sent via IPC to the backend, saved to a temporary file, and analyzed.
+Raw image files block the TCP socket queue, starving time-sensitive control messages (safety warnings, payment confirmations). Ninety compresses the photo to JPEG, converts it to base64, and slices it into **16 KB chunks** with index metadata. Chunks gossip across the mesh independently. Each peer buffers them in memory and reassembles the original image once all chunks arrive.
 
-### 4. Voice Input
-* **Purpose**: Hands-free text transcription and translation in noisy environments.
-* **User Workflow**: Pressing the microphone icon records audio. The transcribed text and its translation are rendered on the screen.
-* **Technology**: Whisper.cpp model (`WHISPER_TINY_Q8_0`) loaded via `@qvac/sdk`.
-* **Implementation Details**: Audio is recorded in the renderer, converted to 16kHz mono WAV, and decoded locally by Whisper.
+**The bounty is held in a smart contract, not a wallet.**
 
-### 5. Read Aloud
-* **Purpose**: Plays translated text out loud for taxi drivers, stewards, or merchants.
-* **User Workflow**: Clicking the speaker icon reads the translation aloud.
-* **Technology**: Web Speech API (`speechSynthesis`).
-* **Implementation Details**: Automatically picks the best matching offline system voice based on the destination language code.
+The parent's USD₮ moves into [`ReuniteEscrow.sol`](contracts/src/ReuniteEscrow.sol) — a Solidity contract deployed on Sepolia that enforces three rules:
 
-### 6. Scout AI
-* **Purpose**: Combines sign translation with community tips to give context-aware stadium recommendations.
-* **User Workflow**: Scanning a sign (e.g., "Gate 3") displays a "Scout Advice" card explaining transport queues, security, or food options nearby.
-* **Technology**: Qwen 3 600M LLM model (`QWEN3_600M_INST_Q4`) loaded via `@qvac/sdk`.
-* **Implementation Details**: Ingests translation history, local tips, and language preferences into a single system prompt to generate a JSON report.
+1. **Only the reporter can release funds** to a confirmed finder
+2. **Only the reporter can reclaim** — and only after a 24-hour timeout
+3. **Double-pay and double-refund are impossible** — the contract reverts with typed errors
 
-### 7. AI Tip Tagging
-* **Purpose**: Automatically indexes and categorizes community tips.
-* **User Workflow**: Fans write a plain-text tip. The system tags it with a category, urgency, and sentiment.
-* **Technology**: Background tagging queue orchestrated via the Qwen LLM.
-* **Implementation Details**: Tips are processed sequentially in a background queue. If the LLM is busy, the queue deduplicates requests.
+```
+postBounty(alertId, amount)     →  USD₮ locked, status = Active
+confirmFinder(alertId, finder)  →  USD₮ sent to finder, status = Paid
+reclaim(alertId)                →  USD₮ returned (only after timeout)
+```
 
-### 8. Tip Feed
-* **Purpose**: Displays a live feed of all fan tips.
-* **User Workflow**: Fans can view tips dropped by others, filter by category, or write and submit a new tip.
-* **Technology**: DOM-rendering logic coupled with a local memory store.
-* **Implementation Details**: Append-only rendering logic ensures the UI remains highly responsive.
-
-### 9. Match Pulse
-* **Purpose**: Delivers live match scores and game highlights.
-* **User Workflow**: Highlights and scores automatically propagate to the tip feed, highlighted under the "Match Pulse" category.
-* **Technology**: Ingested and distributed over the P2P mesh network.
-* **Implementation Details**: Match updates are treated as high-urgency tips with the location set to "Match Pulse" for easy filtering.
-
-### 10. Match Briefing
-* **Purpose**: Generates a spoken stadium summary at the click of a button.
-* **User Workflow**: Fans click "Generate Match Briefing". The app reads all known tips, Reunite alerts, and sign history, compiles them, and reads the summary aloud.
-* **Technology**: Qwen 3 600M LLM + Web Speech TTS.
-* **Implementation Details**: Prompt is formatted to output a valid JSON object. Uses fallback parsers if the LLM output is malformed.
-
-### 11. Broadcast to Section
-* **Purpose**: Relays a translated sign to all nearby fans.
-* **User Workflow**: Fans click "Broadcast to section" next to a translated sign. The sign appears in other section history panels.
-* **Technology**: Hyperswarm `broadcastRaw` messaging.
-* **Implementation Details**: Shares the JSON sign metadata containing text, translation, and timestamps.
-
-### 12. Delegated Scout Inference
-* **Purpose**: Offloads heavy LLM workloads to a peer if the local device is low on battery or CPU.
-* **User Workflow**: The local device detects a peer with `scout` capabilities and delegates the query. The peer processes the request and returns the result.
-* **Technology**: Hyperswarm messaging.
-* **Implementation Details**: Uses request-response pairing over the P2P connection to prevent broadcasting compute payloads to all peers.
-
-### 13. Escrowed Paid Compute
-* **Purpose**: Compensates peers who perform delegated AI inference.
-* **User Workflow**: The requester deposits a fee into escrow. The provider processes the AI query, sends the result, and releases the fee.
-* **Technology**: `ReuniteEscrow` smart contract.
-* **Implementation Details**: If the provider fails to respond or disconnects, the requester reclaims their deposit after a timeout.
-
-### 14. Wallet
-* **Purpose**: Offline-first, self-custodial transactions.
-* **User Workflow**: Displays USD₮ and gas ETH balances, and allows direct peer-to-peer transfers.
-* **Technology**: Tether WDK wallet EVM engine.
-* **Implementation Details**: Keys are derived from a BIP-39 mnemonic stored at `~/.ninety/wallet-seed.txt`.
-
-### 15. QR Payments
-* **Purpose**: Quick peer-to-peer transfers in chaotic stadiums.
-* **User Workflow**: Peer A shows their QR code. Peer B scans it, entering the payment amount to send.
-* **Technology**: `qrcode` generator and `jsQR` parser.
-* **Implementation Details**: Integrates with the camera stream to capture and decode wallet addresses.
-
-### 16. Pending Payments Queue
-* **Purpose**: Allows transactions to be queued while offline.
-* **User Workflow**: Offline payments are signed and queued locally. Once connection is restored, the queue is flushed automatically.
-* **Technology**: In-memory queue + WDK transaction broadcaster.
-* **Implementation Details**: Transactions are signed offline and kept in a pending list until an internet connection is established.
-
-### 17. Reunite
-* **Purpose**: Broadcasts missing person alerts to the stadium crowd.
-* **User Workflow**: Parents report a missing child with details, photo, and a bounty. Other users receive the alert.
-* **Technology**: Hyperswarm P2P messaging.
-* **Implementation Details**: Slices images into base64 chunks and gossips them over the P2P mesh network.
-
-### 18. Reunite Escrow
-* **Purpose**: Guarantees payment to the finder of a missing child.
-* **User Workflow**: The parent deposits the bounty into the escrow contract. Once found, they confirm the finder and the bounty is paid.
-* **Technology**: `ReuniteEscrow` Solidity contract.
-* **Implementation Details**: Only the reporter (parent) can release the bounty. If the alert remains unresolved, the parent can reclaim it after a timeout.
-
-### 19. On-chain Proof Panel
-* **Purpose**: Audit log of all escrow actions.
-* **User Workflow**: Shows explorer links for deposits, releases, and refunds.
-* **Technology**: Etherscan integration + Foundry report compiler.
-* **Implementation Details**: Displays contract deployment addresses, recent transaction history, and static metadata.
-
-### 20. Phrasebook
-* **Purpose**: Offline translation guide for foreign stadiums.
-* **User Workflow**: Users browse categories (Matchday, Emergency) and select a phrase to view and read aloud.
-* **Technology**: Static local phrase database + Web Speech API.
-* **Implementation Details**: Features offline read-aloud functionality in the stadium's native language.
-
-### 21. Leaderboard
-* **Purpose**: Incentivizes community contributions.
-* **User Workflow**: Ranks peers based on tips dropped, alerts resolved, and computed offloads completed.
-* **Technology**: Mesh data sync.
-* **Implementation Details**: Rebuilds rankings dynamically from incoming mesh events.
+> **Why every byte of this contract matters:**
+>
+> Writing to EVM storage is the most expensive operation on Ethereum. A naively structured `Alert` struct would use 5 storage slots. We [packed it into 3](contracts/src/ReuniteEscrow.sol#L16-L22):
+>
+> | Slot | Fields | Bytes Used |
+> |------|--------|------------|
+> | 0 | `reporter` (address, 20B) + `status` (enum, 1B) | 21 / 32 |
+> | 1 | `finder` (address, 20B) + `createdAt` (uint64, 8B) | 28 / 32 |
+> | 2 | `amount` (uint256, 32B) | 32 / 32 |
+>
+> Custom errors instead of `require("string")` reduced the deployed bytecode to **5,528 bytes** and capped deployment cost at **1,128,415 gas**. The contract ships with **23 Foundry tests** (including 2 fuzz tests and boundary-condition coverage) — all passing.
 
 ---
 
-## AI Pipeline
+### Minute 12 · You Find the Child
 
-Ninety chains multiple on-device AI tasks together:
+You spot the child near Gate 12. You tap **Found**. The parent verifies and releases the escrow.
 
-```
-[ Image / Voice Input ] ──► [ Whisper Speech Transcription ] 
-                                      │
-                                      ▼
-[ Camera Snapshot ] ──────► [ GGML OCR Text Detection ]
-                                      │
-                                      ▼
-                            [ NMT Bergamot Translation ]
-                                      │
-                                      ▼
-                            [ Qwen 3 600M LLM (Scout) ]
-                                      │
-                                      ▼
-                            [ Qwen 3 600M LLM (Briefing) ]
-                                      │
-                                      ▼
-                         [ Background AI Tip Tagging ]
-```
+But the parent's phone has no signal. The Sepolia RPC is unreachable.
+
+**This is where most wallet integrations break.**
+
+Standard web3 libraries throw an exception when the node provider disconnects, crashing the payment flow. Ninety's [wallet module](lib/wallet.js) catches connection errors, signs the transaction locally using the private key derived from a BIP-39 mnemonic stored on-device, and queues it as `pending`. A background service polls for connectivity and automatically flushes the queue when the RPC becomes reachable again.
+
+The entire wallet lifecycle is self-custodial through [Tether WDK](https://github.com/tether/wdk):
+
+- **Key generation**: `WDK.getRandomSeedPhrase()` → saved to `~/.ninety/wallet-seed.txt`
+- **Account derivation**: BIP-44 path `m/44'/60'/0'/0/0`
+- **Token transfers**: ERC-20 `transfer()` on Sepolia USD₮
+- **Escrow interactions**: `approve()` → `postBounty()` → `confirmFinder()` / `reclaim()`
+
+No server ever holds the user's private key. No hosted wallet provider. Funds are controlled entirely by the seed phrase on the user's device.
+
+> **Why Tether WDK instead of ethers.js alone?**  
+> WDK handles the full self-custodial lifecycle — seed generation, secure storage, key derivation, and transaction management — as a single integrated SDK. Building this from ethers.js primitives would require reimplementing seed management, account indexing, and token balance tracking. WDK provides this out of the box, designed specifically for USD₮ workflows.
 
 ---
 
-## Networking
+### Minute 15 · The AI Briefing
 
-### 1. Hyperswarm & Peer Discovery
-Peers generate or join a shared 32-byte topic hex key. Hyperswarm utilizes DHT (Distributed Hash Table) discovery to connect peers without a central registry.
+You're about to leave the stadium. Ninety has accumulated tips from dozens of nearby fans, safety alerts, sign translations, and match updates. You tap **Briefing** and hold your phone to your ear.
 
-### 2. Newline-Delimited JSON (NDJSON) Framing
-To prevent TCP stream coalescing, all mesh messages are serialized with a trailing newline (`\n`). Incoming TCP data streams are buffered and parsed line-by-line.
+A 20-second spoken summary plays — generated entirely on-device by the same **Qwen 3 600M** (4-bit quantized, ~380 MB) LLM that powers Scout recommendations. It covers safety alerts first, then missing-person alerts, then food, transport, and queues — skipping any category with no data rather than saying "no information available."
 
-### 3. Chunked Image Transfer
-Reunite alert photos are resized, compressed to JPEG, converted to base64, and split into 16KB chunks. Peers gossip these chunks and reassemble the file locally.
+The briefing is capped at 130 words by a post-processing guard that trims at sentence boundaries. Text-to-speech converts it to audio in the Electron renderer.
 
+---
+
+## Architecture
+
+Ninety runs as two processes connected by a loopback TCP socket:
+
+```mermaid
+graph LR
+    subgraph Electron ["Electron · UI Process"]
+        Camera["📷 Camera + Mic"]
+        UI["Renderer (DOM)"]
+    end
+
+    subgraph Bare ["Bare · Headless Runtime"]
+        QVAC["QVAC<br/>OCR · NMT · Whisper · LLM"]
+        Mesh["Hyperswarm<br/>P2P Mesh"]
+        WDK["Tether WDK<br/>Self-Custodial Wallet"]
+    end
+
+    Camera -->|"Base64 image/audio"| QVAC
+    UI <-->|"IPC (JSON over TCP)"| Bare
+    Mesh <-->|"NDJSON over Hyperswarm"| Peers["Other Fans' Devices"]
+    WDK -->|"Signed Tx"| Sepolia["Sepolia Network"]
 ```
-[ Sender Photo ] ──► [ Compress ] ──► [ Base64 ] ──► [ 16KB Chunks ] ──► [ P2P Gossip ]
-                                                                               │
-                                                                               ▼
-[ Recipient UI ] ◄── [ Render ] ◄── [ Reassemble ] ◄───────────────────────────┘
+
+**Why two processes?**
+
+The Electron renderer handles camera capture, microphone input, and DOM rendering. The Bare runtime runs the C++ AI models, the Hyperswarm mesh, and the WDK wallet. Separating them means a crash in the AI pipeline never kills the UI, and the renderer's garbage collector never pauses the mesh network.
+
+Communication between the two processes uses the same NDJSON framing as the peer mesh — JSON objects delimited by newlines over a TCP socket, with a command-ID correlation system for request-response pairs.
+
+---
+
+## What a Fan Can Do
+
+### 🔍 Understand
+- **OCR** — extract text from signs, tickets, and maps using C++ GGML bindings
+- **Translate** — 20 language pairs via Bergamot neural machine translation
+- **Transcribe** — speech-to-text via Whisper.cpp (with [silence-hallucination filtering](lib/qvac.js#L352-L360))
+- **Phrasebook** — offline emergency and matchday phrases
+
+### 📡 Connect
+- **Mesh discovery** — Hyperswarm DHT, no signaling server
+- **Tip gossip** — broadcast crowd-sourced stadium tips to all peers
+- **Sign relay** — share translated sign readings with your section
+- **Match pulse** — live score and stadium notices over the mesh
+
+### 🧠 Coordinate
+- **Scout AI** — Qwen LLM combines signs, tips, and context into recommendations
+- **Match briefing** — 20-second spoken stadium summary from live data
+- **Compute offload** — delegate LLM queries to peers, pay 0.01 USD₮ via escrow
+
+### 🛡️ Protect
+- **Reunite alerts** — gossip missing-person photos across the mesh (16KB chunked)
+- **Bounty escrow** — lock USD₮ search rewards in [`ReuniteEscrow.sol`](contracts/src/ReuniteEscrow.sol)
+- **Contribution board** — track tips shared, alerts resolved, compute provided
+
+### 💸 Transact
+- **Self-custodial wallet** — WDK-managed keys, BIP-39 seed, on-device signing
+- **QR payments** — scan or generate wallet address QR codes via camera
+- **Offline queue** — sign transactions locally, auto-broadcast when signal returns
+- **On-chain audit** — every escrow and payment linked to Sepolia Etherscan
+
+---
+
+## Verified, Not Just Tested
+
+| Layer | Tests | Tool | What's Covered |
+|-------|-------|------|----------------|
+| Smart contract | **23/23** (incl. 2 fuzz) | Foundry | All 10 custom errors, reentrancy, timeout boundary, storage isolation, multi-reporter |
+| Scout AI | 21 | Bare | Prompt construction, JSON fallback parsing, delegation timeout, peer disconnect |
+| Compute escrow | 14 | Bare | Full lifecycle (lock→compute→release), refund reasons, concurrent jobs |
+| Match briefing | 10 | Bare | Length enforcement, TTS safety, malformed output recovery |
+| On-chain proof | 12 | Bare | Explorer URLs, history trimming, Foundry metadata rendering |
+| **Total** | **~80** | | |
+
+```bash
+# Run everything
+npm test                      # JS: bare test.js && bare test-compute-escrow.js && ...
+cd contracts && forge test    # Solidity: 23/23, gas report available via forge test --gas-report
 ```
 
 ---
 
-## Smart Contract
-
-Ninety uses a gas-optimized escrow contract (`ReuniteEscrow.sol`) written in Solidity.
-
-### Escrow State Machine
-```
-       Active 
-      /      \
-     /        \
-  Paid      Refunded
-```
-
-* **Active**: Bounty deposited and locked.
-* **Paid**: Finder confirmed; contract transfers bounty.
-* **Refunded**: Timeout expired; reporter reclaims bounty.
-
-### Security Properties
-1. **SafeERC20**: Prevents silent transfer failures.
-2. **Reentrancy Protection**: Employs the Checks-Effects-Interactions (CEI) pattern.
-3. **Timed Reclaims**: Reclaiming bounty is locked until the `REFUND_TIMEOUT` has elapsed.
-4. **Packed Storage**: Layout optimized to fit reporter address and status into a single slot.
-
----
-
-## On-chain Proof
-
-The panel tracks contract addresses, explorer links, and recent transactions:
-
-* **Addresses**:
-  * **ReuniteEscrow**: `0x798Ac160f1f9f58bEeB1676Aa6eb107682a42A87`
-  * **USD₮ Contract**: `0xd077A400968890Eacc75cdc901F0356c943e4fDb`
-* **Foundry Report Summary**:
-  * **Test Coverage**: 23/23 unit tests passing.
-  * **Contract Size**: 5,528 bytes.
-  * **Deployment Gas**: 1,128,415 gas.
-
----
-
-## Installation
+## Run the Demo
 
 ### Prerequisites
-1. **Bare Runtime**: `npm i -g bare`
-2. **Node.js** (v22.17.0 or higher)
-3. **Foundry** (for solidity tests)
+- **Bare Runtime** — `npm i -g bare`
+- **Node.js** ≥ 22.17.0
+- **Foundry** (for contract tests)
 
-### Setup
+### Install
 ```bash
 git clone https://github.com/Faleesha-Zaeen/Ninety.git
-cd Ninety
-npm install
+cd Ninety && npm install
 ```
 
-### Running the App
-
-#### Running CLI Peers
-**Peer 1**:
-```bash
-bare index.js
-```
-*Note the topic hex generated.*
-
-**Peer 2**:
-```bash
-bare index.js <TOPIC_HEX>
-```
-
-#### Running the Electron UI
-**Peer 1**:
+### Launch Two Peers
+**Terminal 1** (creates a match session):
 ```bash
 npm run ui:peer1
 ```
-*Copy the Match ID from the top right.*
+Copy the **Match ID** from the top-right corner.
 
-**Peer 2**:
+**Terminal 2** (joins the session):
 ```bash
-npm run ui:peer2 -- --topic <PASTE_MATCH_ID>
+npm run ui:peer2 -- --topic <MATCH_ID>
 ```
 
----
-
-## Demo Walkthrough
-
-1. **Scan a Sign**:
-   * Open the **Sign Reader** tab.
-   * Click **Choose image** and select `sign.jpg`.
-   * The text types in, followed by the translation.
-2. **Drop a Tip**:
-   * Open the **Tip Feed** tab.
-   * Submit a tip (e.g. `Gate 3: Long queue, use Gate 5`).
-   * The tip appears instantly and propagates to all connected peers.
-3. **Generate Briefing**:
-   * Click **Generate Match Briefing**.
-   * The app reads all local tips and reads the summary aloud.
-4. **Issue a Reunite Alert**:
-   * Go to **Reunite** tab.
-   * Enter details and a bounty, then click **Broadcast alert**.
-   * Other peers receive the child's photo and translated info.
-5. **Collect Bounty**:
-   * A peer clicks **Found them** on the alert card.
-   * The parent confirms and pays the bounty, transferring USD₮ via the smart contract.
+Both peers are now connected. Open the **Read** tab to OCR a sign, switch to **Connect** to share tips, or activate **Reunite** to test the full escrow flow with on-chain proof.
 
 ---
 
-## Project Structure
+## Repository
 
 ```
 Ninety/
-├── contracts/               # Solidity Smart Contracts
-│   ├── src/
-│   │   └── ReuniteEscrow.sol# Bounty & Compute Escrow
-│   ├── test/
-│   │   └── ReuniteEscrow.t.sol
-│   └── foundry-report.json  # Compiled Gas & Size Metrics
-├── electron/                # Electron UI Layer
-│   ├── main.cjs             # IPC Bridge & Window Manager
-│   ├── preload.cjs
-│   └── renderer/
-│       ├── index.html
-│       ├── renderer.js      # App Controller
-│       └── styles.css       # Matchday-themed Stylesheet
-├── lib/                     # Headless Modules
-│   ├── mesh.js              # P2P Hyperswarm Networking
-│   ├── onchain.js           # On-chain Proof Panel Data
-│   ├── qvac.js              # Local OCR & Translation
-│   ├── scout.js             # LLM Scout AI advice
-│   └── wallet.js            # WDK EVM Wallet Integration
-├── test.js                  # Unit tests (Scout & Tagging)
-├── test-compute-escrow.js   # Unit tests (Compute Escrow)
-├── test-match-briefing.js   # Unit tests (Match Briefing)
-├── test-onchain-proof.js    # Unit tests (On-chain proof)
-├── index.js                 # CLI Entry point
-├── backend-headless.js      # Headless Backend Process
-└── package.json
+├── contracts/
+│   ├── src/ReuniteEscrow.sol        # Packed-storage bounty & compute escrow
+│   ├── test/ReuniteEscrow.t.sol     # 23 Foundry tests (2 fuzz)
+│   └── foundry-report.json          # Gas & size metrics snapshot
+├── electron/
+│   ├── main.cjs                     # IPC bridge, backend spawn, TCP transport
+│   ├── preload.cjs                  # Context-isolated API surface
+│   └── renderer/                    # UI (2,484 lines, append-only DOM)
+├── lib/
+│   ├── mesh.js                      # Hyperswarm mesh + NDJSON framing
+│   ├── qvac.js                      # OCR, translation, Whisper, LLM
+│   ├── scout.js                     # AI recommendations + compute delegation
+│   ├── wallet.js                    # WDK wallet + offline signing queue
+│   └── onchain.js                   # Etherscan proof panel
+├── test.js                          # Scout AI unit tests
+├── test-compute-escrow.js           # Compute escrow lifecycle tests
+├── test-match-briefing.js           # Briefing generation tests
+├── test-onchain-proof.js            # On-chain audit tests
+└── package.json                     # 13 runtime deps + 1 dev (Electron)
 ```
 
 ---
 
-## Testing
+## What's Next
 
-Run all unit tests in the Bare runtime environment:
-
-```bash
-# Run all tests
-npm test
-
-# Run individual test files
-bare test.js
-bare test-compute-escrow.js
-bare test-match-briefing.js
-bare test-onchain-proof.js
-```
-
-### Foundry Contract Tests
-To compile and test the Solidity smart contracts:
-```bash
-cd contracts
-forge test
-forge test --gas-report
-```
+- **Hypercore persistence** — save tips and chat history to an append-only log, no central database
+- **Local TTS** — replace browser speech synthesis with an on-device model
+- **Multi-token escrow** — extend `ReuniteEscrow` to accept any ERC-20 stablecoin
 
 ---
 
-## Security
+<div align="center">
 
-* **Self-custodial keys**: Wallet seed phrases are saved at `~/.ninety/wallet-seed.txt`. Ninety never transmits private keys or mnemonics over the network.
-* **No backend server**: All data is transferred peer-to-peer over Hyperswarm.
-* **Checked-Effects-Interactions (CEI)**: Smart contracts update local state before transferring tokens to prevent reentrancy attacks.
-* **SafeERC20**: Prevents silent transfer failures when dealing with USD₮.
+**Ninety** — MIT License
 
----
+Built for the [Tether Developers Cup 2026](https://developers.tether.io)
 
-## Future Improvements
-
-* **Decentralized Storage**: Integrate Hypercore/Hyperdrive for persistent offline history storage.
-* **Local Multi-lingual Voice Synthesis**: Support local TTS models to replace browser speech dependencies.
-* **Multi-token Bounties**: Extend the escrow contract to accept other stablecoins.
-
----
-
-## License
-
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+</div>
+]]>
