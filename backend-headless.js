@@ -791,7 +791,9 @@ async function handleLine (line) {
         if (msg.escrowTx) {
           console.log(`[escrow] Waiting for deposit transaction ${msg.escrowTx} to be confirmed...`)
           await lib.waitForReceipt(msg.escrowTx)
-          console.log(`[escrow] Deposit confirmed! Proceeding with release...`)
+          console.log(`[escrow] Deposit confirmed! Waiting 4 seconds for RPC load-balancer consistency...`)
+          await new Promise(resolve => setTimeout(resolve, 4000))
+          console.log(`[escrow] Proceeding with release...`)
           const result = await lib.escrowConfirm(msg.reportId, msg.toAddress)
           recordAndEmitTx('Reunite Release', result.hash)
           emit({ ev: 'bounty-paid', id, reportId: msg.reportId, amount, to: msg.toAddress, hash: result.hash })
