@@ -789,6 +789,9 @@ async function handleLine (line) {
         if (!msg.toAddress) throw new Error('No finder address to pay')
         
         if (msg.escrowTx) {
+          console.log(`[escrow] Waiting for deposit transaction ${msg.escrowTx} to be confirmed...`)
+          await lib.waitForReceipt(msg.escrowTx)
+          console.log(`[escrow] Deposit confirmed! Proceeding with release...`)
           const result = await lib.escrowConfirm(msg.reportId, msg.toAddress)
           recordAndEmitTx('Reunite Release', result.hash)
           emit({ ev: 'bounty-paid', id, reportId: msg.reportId, amount, to: msg.toAddress, hash: result.hash })
