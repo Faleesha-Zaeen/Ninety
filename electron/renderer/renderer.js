@@ -940,10 +940,13 @@ function renderMyAlert (report) {
 
 function renderIncomingAlert (report) {
   $('reuniteEmpty') && $('reuniteEmpty').remove()
-  if (document.getElementById('inc-' + report.id)) return
-  const card = document.createElement('div')
-  card.className = 'alert-card'
-  card.id = 'inc-' + report.id
+  let card = document.getElementById('inc-' + report.id)
+  const isNew = !card
+  if (isNew) {
+    card = document.createElement('div')
+    card.className = 'alert-card'
+    card.id = 'inc-' + report.id
+  }
   const displayPhoto = completedPhotos.get(report.id) || report.dataUrl
   card.innerHTML = `
     <img class="alert-photo img-rep-${report.id}" src="${displayPhoto || ''}" ${!displayPhoto ? 'style="display:none;"' : ''} alt="">
@@ -967,13 +970,15 @@ function renderIncomingAlert (report) {
         <button class="btn-accent btn-small" data-found="${report.id}">Found them</button>
       </div>
     </div>`
-  $('incomingAlerts').prepend(card)
-  const foundBtn = card.querySelector('[data-found]')
-  foundBtn.addEventListener('click', () => {
-    foundBtn.disabled = true
-    foundBtn.textContent = 'Reported found ✓'
-    send('found-them', { reportId: report.id })
-  })
+  if (isNew) {
+    $('incomingAlerts').prepend(card)
+    const foundBtn = card.querySelector('[data-found]')
+    foundBtn.addEventListener('click', () => {
+      foundBtn.disabled = true
+      foundBtn.textContent = 'Reported found ✓'
+      send('found-them', { reportId: report.id })
+    })
+  }
   if (!$('panel-reunite').classList.contains('is-active')) {
     reuniteUnread++
     const b = $('reuniteBadge'); b.hidden = false; b.textContent = String(reuniteUnread)
@@ -1177,6 +1182,15 @@ api.onEvent((evt) => {
       // clear the form
       $('reuniteName').value = ''; $('reuniteDetail').value = ''; $('reuniteBounty').value = ''
       $('reunitePreview').hidden = true; $('reuniteChooser').hidden = false; reuniteImage = null
+      break
+    }
+    case 'missing-reported-tx': {
+      const entry = myReports.get(evt.id)
+      if (entry) {
+        entry.report.escrowTx = evt.escrowTx
+        entry.report.contract = evt.contract
+        renderMyAlert(entry.report)
+      }
       break
     }
     case 'missing-alert':

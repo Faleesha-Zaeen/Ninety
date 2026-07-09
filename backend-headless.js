@@ -732,19 +732,20 @@ async function handleLine (line) {
           dataUrl: msg.dataUrl || null,        // small thumbnail from the UI
           reporterAddress: myAddress
         }
-        // Attempt escrow deposit
-        try {
-          console.log(`[escrow] Attempting escrow deposit for alert ${report.id}...`)
-          const depositResult = await lib.escrowDeposit(report.id, report.bounty)
+
+        // 1. Instantly cache, broadcast raw report to mesh, and emit to local UI
+        reuniteAlertCache.set(report.id, { name: report.name, detail: report.detail, found: false })
+        mesh.broadcastRaw({ type: 'missing-report', report })
+        emit({ ev: 'missing-reported', id, report })
+
+        // 2. Perform escrow deposit asynchronously in the background
+        lib.escrowDeposit(report.id, report.bounty).then((depositResult) => {
           report.escrowTx = depositResult.hash
           report.contract = lib.getEscrowAddress()
           console.log(`[escrow] Deposit successful. Tx: ${report.escrowTx}, contract: ${report.contract}`)
           recordAndEmitTx('Reunite Deposit', depositResult.hash)
-        } catch (err) {
-          console.warn(`[escrow] Escrow deposit failed, falling back to direct payment:`, err.message)
-        }
-
-        if (report.escrowTx) {
+          
+          // Broadcast updated alert with escrow details to peers
           mesh.broadcastRaw({
             type: 'reunite',
             alertId: report.id,
@@ -753,11 +754,11 @@ async function handleLine (line) {
             amount: report.bounty,
             report
           })
-        } else {
-          mesh.broadcastRaw({ type: 'missing-report', report })
-        }
-        reuniteAlertCache.set(report.id, { name: report.name, detail: report.detail, found: false })
-        emit({ ev: 'missing-reported', id, report })
+          emit({ ev: 'missing-reported-tx', id: report.id, escrowTx: report.escrowTx, contract: report.contract })
+        }).catch((err) => {
+          console.warn(`[escrow] Escrow deposit background transaction failed:`, err.message)
+        })
+
         break
       }
 
