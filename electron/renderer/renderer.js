@@ -972,13 +972,13 @@ function renderIncomingAlert (report) {
     </div>`
   if (isNew) {
     $('incomingAlerts').prepend(card)
-    const foundBtn = card.querySelector('[data-found]')
-    foundBtn.addEventListener('click', () => {
-      foundBtn.disabled = true
-      foundBtn.textContent = 'Reported found ✓'
-      send('found-them', { reportId: report.id })
-    })
   }
+  const foundBtn = card.querySelector('[data-found]')
+  foundBtn.addEventListener('click', () => {
+    foundBtn.disabled = true
+    foundBtn.textContent = 'Reported found ✓'
+    send('found-them', { reportId: report.id })
+  })
   if (!$('panel-reunite').classList.contains('is-active')) {
     reuniteUnread++
     const b = $('reuniteBadge'); b.hidden = false; b.textContent = String(reuniteUnread)
