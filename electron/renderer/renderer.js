@@ -1238,6 +1238,10 @@ api.onEvent((evt) => {
     case 'error':
       if (evt.cmd === 'pay') { $('payBtn').disabled = peers.size === 0; $('payBtn').textContent = 'Pay' }
       if (evt.cmd === 'report-missing') { const b = $('reuniteBroadcast'); b.disabled = false; b.textContent = 'Broadcast alert' }
+      if (evt.cmd === 'scout-analyze') {
+        scoutText.textContent = 'Failed to analyze'
+        scoutText.classList.remove('caret')
+      }
       toast('warn', prettyCmd(evt.cmd) + ' failed', evt.message)
       if (evt.id === activeRead) { ocrEl.classList.remove('caret'); transEl.classList.remove('caret') }
       break
