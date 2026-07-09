@@ -1,11 +1,9 @@
-<![CDATA[<div align="center">
-
 # Ninety
 
-**When the final whistle blows and 80,000 phones kill the network,<br>Ninety is the only app still working.**
+### When the final whistle blows and 80,000 phones kill the network, Ninety is the only app still working.
 
-A peer-to-peer matchday companion that runs without internet.<br>
-Translate signs. Share warnings. Find missing people. Send payments.<br>
+A peer-to-peer matchday companion that runs without internet.  
+Translate signs. Share warnings. Find missing people. Send payments.  
 No servers. No cloud. No signal required.
 
 **Built with [Pears](https://docs.pears.com) · [QVAC](https://docs.pears.com) · [Tether WDK](https://github.com/tether/wdk)**
@@ -14,8 +12,6 @@ No servers. No cloud. No signal required.
 [![4 AI Models](https://img.shields.io/badge/on--device_AI-4_models-blue)](#minute-2--your-phone-becomes-a-stadium-brain)
 [![10 Languages](https://img.shields.io/badge/translation-10_languages-orange)](#minute-1--a-sign-you-cant-read)
 [![MIT](https://img.shields.io/badge/license-MIT-green)](LICENSE)
-
-</div>
 
 ---
 
@@ -330,4 +326,3 @@ Ninety/
 Built for the [Tether Developers Cup 2026](https://developers.tether.io)
 
 </div>
-]]>
